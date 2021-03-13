@@ -14,13 +14,53 @@ class MoveController extends Controller
         $size = $board['0'];
         $grid = $this->populateArray($board[0], $board[1]);
 
+        $moves = [];
         for ($x = 0; $x < $size; $x++) {
             for ($y = 0; $y < $size; $y++) {
                 if ($grid[$y][$x] == $player) {
-                    $this->processBlob($player, $grid, $x, $y); // 1, 0
+                    $moves_for_blob = $this->processBlob($player, $grid, $x, $y); // 1, 0
+                    foreach ($moves_for_blob as $move) {
+                        $moves[] = $move;
+                    }
                 }
             }
         }
+
+        $payload = [
+            'outcome' => 'GAMEOVER',
+            'reason'  => 'NO_MOVES',
+        ];
+
+        $best_moves = [];
+
+        foreach($moves as $index => $move) {
+            if($index == 0) {
+                $best_moves[] = $move;
+            } else {
+                if ($move['score'] > $best_moves[0]['score']) {
+                    $best_moves = [$move];
+                } else if ($move['score'] == $best_moves[0]['score']) {
+                    $best_moves[] = $move;
+                }
+            }
+        }
+
+        $number_of_moves = count($best_moves);
+
+        if ($number_of_moves) {
+            $payload = [
+                'outcome' => 'MOVE',
+                'reason'  => '',
+            ];
+
+            $index = rand(0, ($number_of_moves-1));
+            $payload['move'] = $best_moves[$index];
+
+        }
+
+        dd($payload);
+
+        return $payload;
     }
 
     public function populateArray($size, $string) {
@@ -51,7 +91,11 @@ class MoveController extends Controller
 
 
     public function getBoard() {
-        return [5, "_R_____G____G___________G"];
+        // return [5, "_R_____G____G___________G"];
+        // return [5, "_R_____G____G___R_______G"];
+        // return [5, "_______G____G___R_______G"];
+
+        return [5, "______RBR__R_R__RRR______"];
 
 
         // "R____
@@ -63,8 +107,14 @@ class MoveController extends Controller
         // "_R___
         //  __G__
         //  __G__
-        //  _____
+        //  _R___
         //  ____G"
+
+        // _____
+        // _RBR_
+        // _R_R_
+        // _RRR_
+        // _____
     }
 
     public function processBlob($player, $grid, $x, $y) {
@@ -98,23 +148,24 @@ class MoveController extends Controller
             $coordinates[] = $coordinate;
         }
 
+        $from = ['x' => $x, 'y' => $y];
 
         $results = [];
         foreach ($coordinates as $dest) {
             if (isset($grid[$dest['toY']][$dest['toX']]) && $grid[$dest['toY']][$dest['toX']] == "_") {
-                $results[] = $this->calculate_converts($dest, $grid, $player);
+                $results[] = $this->calculate_converts($from, $dest, $grid, $player);
             }
         }
 
-        dd($results);
+        return $results;
     }
 
-    public function calculate_converts($dest, $grid, $player) {
+    public function calculate_converts($from, $dest, $grid, $player) {
         $new_grid = $grid;
-        $new_grid[$dest['toX']][$dest['toY']] = $player; // move into empty
-        $count = 0;
+        $new_grid[$dest['toY']][$dest['toX']] = $player; // move into empty
+        $score = 0;
         if ($dest['type'] == "Split") {
-            $count = 1;
+            $score = 1;
         }
 
         // also need to remove the originals. Urgh, my brain. Review later!
@@ -135,17 +186,30 @@ class MoveController extends Controller
         $translations = [];
         foreach($surrounding as $going_to) {
             $translation = [];
-            $translation[] = $dest['toX']+$going_to[0];
             $translation[] = $dest['toY']+$going_to[1];
+            $translation[] = $dest['toX']+$going_to[0];
             $translations[] = $translation;
         }
 
         foreach($translations as $check) {
             if (isset($new_grid[$check[0]][$check[1]]) && !in_array($new_grid[$check[0]][$check[1]], ["_", $player])) {
                 $new_grid[$check[0]][$check[1]] = $player;
-                $count++;
+                $score++;
             }
         }
-        return [$dest, $grid, $new_grid, $player, $count];
+
+        // remove the original blob if it's a jump
+        if ($dest['type'] == "Jump") {
+            $new_grid[$from['y']][$from['x']] = '_';
+        }
+
+        return [
+                'from' => $from,
+                'destination' => $dest,
+                'start_grid' => $grid,
+                'end_grid' => $new_grid,
+                'player' => $player,
+                'score' => $score
+            ];
     }
 }
