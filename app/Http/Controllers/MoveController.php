@@ -71,36 +71,81 @@ class MoveController extends Controller
 
         // populate coordinates
         $comparisons = [
-            [-2, -2],
-            [ 0, -2],
-            [ 2,  -2],
-            [-1, -1],
-            [ 0, -1],
-            [ 1, -1],
-            [-1,  0],
-            [ 1,  0],
-            [-1, 1],
-            [0,  1],
-            [1,  1],
-            [-2, 2],
-            [0, 2],
-            [2, 2]
+            [-2,  -2, 'Jump'],
+            [ 0,  -2, 'Jump'],
+            [ 2,  -2, 'Jump'],
+            [-1,  -1, 'Split'],
+            [ 0,  -1, 'Split'],
+            [ 1,  -1, 'Split'],
+            [-2,   0, 'Jump'],
+            [-1,   0, 'Split'],
+            [ 1,   0, 'Split'],
+            [ 2,   0, 'Jump'],
+            [-1,   1, 'Split'],
+            [ 0,   1, 'Split'],
+            [ 1,   1, 'Split'],
+            [-2,   2, 'Jump'],
+            [ 0,   2, 'Jump'],
+            [ 2,   2, 'Jump']
         ];
-
-        // dd($x, $y);
 
         $coordinates = [];
 
         foreach($comparisons as $translation) {
-            $coordinates[] = [$x+$translation[0], $y+$translation[1]];
+            $coordinate['type'] = $translation[2];
+            $coordinate['toY'] = $y+$translation[0];
+            $coordinate['toX'] = $x+$translation[1];
+            $coordinates[] = $coordinate;
         }
 
+
+        $results = [];
         foreach ($coordinates as $dest) {
-
-            if (isset($grid[$dest[0]][$dest[1]]) && $grid[$dest[0]][$dest[1]] == "_") {
-                dd($dest[0], $dest[1]);
+            if (isset($grid[$dest['toY']][$dest['toX']]) && $grid[$dest['toY']][$dest['toX']] == "_") {
+                $results[] = $this->calculate_converts($dest, $grid, $player);
             }
-
         }
+
+        dd($results);
+    }
+
+    public function calculate_converts($dest, $grid, $player) {
+        $new_grid = $grid;
+        $new_grid[$dest['toX']][$dest['toY']] = $player; // move into empty
+        $count = 0;
+        if ($dest['type'] == "Split") {
+            $count = 1;
+        }
+
+        // also need to remove the originals. Urgh, my brain. Review later!
+
+        // convert and calculate converts
+
+        $surrounding = [
+            [-1,  -1],
+            [ 0,  -1],
+            [ 1,  -1],
+            [-1,   0],
+            [ 1,   0],
+            [-1,   1],
+            [ 0,   1],
+            [ 1,   1],
+        ];
+
+        $translations = [];
+        foreach($surrounding as $going_to) {
+            $translation = [];
+            $translation[] = $dest['toX']+$going_to[0];
+            $translation[] = $dest['toY']+$going_to[1];
+            $translations[] = $translation;
+        }
+
+        foreach($translations as $check) {
+            if (isset($new_grid[$check[0]][$check[1]]) && !in_array($new_grid[$check[0]][$check[1]], ["_", $player])) {
+                $new_grid[$check[0]][$check[1]] = $player;
+                $count++;
+            }
+        }
+        return [$dest, $grid, $new_grid, $player, $count];
     }
 }
