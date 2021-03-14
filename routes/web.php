@@ -18,4 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/test', [MoveController::class, 'test']);
+Route::get('/test/{advance?}', [MoveController::class, 'test']);

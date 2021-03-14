@@ -15,15 +15,26 @@ class MoveController extends Controller
 
         $board = $this->getBoard();
         $size = $board[0];
-        $player = "R";
+        $player = "G";
+
+        // check if the player has no blobs left and if so, skip their go.
+        if (strpos($board[1], $player) === false) {
+            dd('Player has no blobs!');
+        }
+
         $moves = $this->getMoves($player, $board);
 
+        // check if any of the initial moves result in a victory and if so, just use that regardless!
+
         if ($advance == 0) {
-            // needs singular lookup adding in here!
+            // single lookup logic to go here.
             return $moves;
         }
 
+        // should populate counters all the way down.
         $moves = $this->populateCounters($moves, $size, $player, 1, $advance);
+        // logic to return the best move to follow.
+        dd($moves);
     }
 
     public function populateCounters(&$moves, $size, $player, $level, $advance) {
@@ -31,6 +42,7 @@ class MoveController extends Controller
         foreach($moves as $index => $move) {
             $moves[$index]['counters'] = $this->getMoves($player, [$size, $move['end_grid']]);
             if ($level < $advance) {
+                // check to go in here re: whether there are any moves returned!
                 $this->populateCounters($moves[$index]['counters'], $size, $player, $level+1, $advance);
             }
         }
@@ -132,30 +144,10 @@ class MoveController extends Controller
 
 
     public function getBoard() {
-        // return [5, "_R_____G____G___________G"];
         return [5, "_R_____G____G___R_______G"];
         // return [5, "_______G____G___R_______G"];
-
-        // return [5, "______RBR__R_R__RRR______"];
-
-
-        // "R____
-        //  __G__
-        //  __G__
-        //  _____
-        //  ____G"
-
-        // "_R___
-        //  __G__
-        //  __G__
-        //  _R___
-        //  ____G"
-
-        // _____
-        // _RBR_
-        // _R_R_
-        // _RRR_
-        // _____
+        // return [5, "______RGR__R_R__RRR______"]; // test case, green to win in one move
+        // return [5, "_G_____G____G___G_______G"]; // no blobs test case.
     }
 
     public function processBlob($player, $grid, $x, $y) {
@@ -209,10 +201,7 @@ class MoveController extends Controller
             $score = 1;
         }
 
-        // also need to remove the originals. Urgh, my brain. Review later!
-
         // convert and calculate converts
-
         $surrounding = [
             [-1,  -1],
             [ 0,  -1],
@@ -245,12 +234,12 @@ class MoveController extends Controller
         }
 
         return [
-                'from' => $from,
-                'destination' => $dest,
-                'start_grid' => $grid,
-                'end_grid' => $new_grid,
-                'player' => $player,
-                'score' => $score
-            ];
+            'from' => $from,
+            'destination' => $dest,
+            'start_grid' => $grid,
+            'end_grid' => $new_grid,
+            'player' => $player,
+            'score' => $score
+        ];
     }
 }
