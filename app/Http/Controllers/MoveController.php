@@ -6,13 +6,49 @@ use Illuminate\Http\Request;
 
 class MoveController extends Controller
 {
-    public function test() {
-        return $this->processMoves("R", $this->getBoard());
+    public function test($advance = 0) {
+
+        // check advance is odd, return early.
+        if ($advance % 2 != 0) {
+            return;
+        }
+
+        $board = $this->getBoard();
+        $size = $board[0];
+        $player = "R";
+        $moves = $this->getMoves($player, $board);
+
+        if ($advance == 0) {
+            // needs singular lookup adding in here!
+            return $moves;
+        }
+
+        $moves = $this->populateCounters($moves, $size, $player, 1, $advance);
     }
 
-    public function processMoves($player, $board) {
+    public function populateCounters(&$moves, $size, $player, $level, $advance) {
+        $player = $this->flipPlayer($player);
+        foreach($moves as $index => $move) {
+            $moves[$index]['counters'] = $this->getMoves($player, [$size, $move['end_grid']]);
+            if ($level < $advance) {
+                $this->populateCounters($moves[$index]['counters'], $size, $player, $level+1, $advance);
+            }
+        }
+        return $moves;
+    }
+
+    public function flipPlayer($player) {
+        return $player == "R" ? "G" : "R";
+    }
+
+    public function getMoves($player, $board) {
         $size = $board['0'];
-        $grid = $this->populateArray($board[0], $board[1]);
+
+        if(!is_array($board[1])) {
+            $grid = $this->populateArray($board[0], $board[1]);
+        } else {
+            $grid = $board[1];
+        }
 
         $moves = [];
         for ($x = 0; $x < $size; $x++) {
@@ -25,6 +61,11 @@ class MoveController extends Controller
                 }
             }
         }
+
+        return($moves);
+
+        // initial return logic below, will need a refactor at a later point when
+        // recursive counters is sorted!
 
         $payload = [
             'outcome' => 'GAMEOVER',
@@ -92,10 +133,10 @@ class MoveController extends Controller
 
     public function getBoard() {
         // return [5, "_R_____G____G___________G"];
-        // return [5, "_R_____G____G___R_______G"];
+        return [5, "_R_____G____G___R_______G"];
         // return [5, "_______G____G___R_______G"];
 
-        return [5, "______RBR__R_R__RRR______"];
+        // return [5, "______RBR__R_R__RRR______"];
 
 
         // "R____
